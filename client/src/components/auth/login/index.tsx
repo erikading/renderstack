@@ -7,7 +7,7 @@ import { useAuth0 } from '@auth0/auth0-react';
  */
 const Login = () => {
   const { isLoading, isAuthenticated } = useAuth0();
-  const { handleLogin } = useAuth();
+  const { handleLogin, err } = useAuth();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -15,7 +15,7 @@ const Login = () => {
 
   // Don't render login button if already authenticated
   if (isAuthenticated) {
-    return <div>Redirecting...</div>;
+    return <div>{err || 'Redirecting...'}</div>;
   }
 
   return (

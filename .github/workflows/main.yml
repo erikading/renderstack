@@ -43,7 +43,7 @@ jobs:
       - name: Build projects
         if: ${{ always() }}
         env:
-          REACT_APP_SERVER_URL: http://localhost:8000
+          VITE_SERVER_URL: http://localhost:8000
         run: npm run build --workspaces
 
       - name: Test that backend server starts

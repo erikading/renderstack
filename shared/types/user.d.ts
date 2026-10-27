@@ -46,6 +46,7 @@ export interface PortfolioItem {
  * - `biography`: A short description or bio of the user (optional).
  */
 export interface User extends UserCredentials {
+  email: string;
   dateJoined: Date;
   biography?: string;
   skills?: string[];
@@ -87,12 +88,14 @@ export interface DatabaseUser extends User {
  * Express request for user login, containing user credentials.
  * - `username`: The username submitted in the request (body).
  * - `password`: The password submitted in the request (body).
+ * - `email`: The email submitted in the request (body).
  * - `biography`: Optional field for biography information (body).
  */
 export interface UserRequest extends Request {
   body: {
     username: string;
     password: string;
+    email: string;
     biography?: string;
   };
 }
@@ -103,6 +106,18 @@ export interface UserRequest extends Request {
  */
 export interface UserByUsernameRequest extends Request {
   params: {
+    username: string;
+  };
+}
+
+/**
+ * Express request for signing in an Auth0 user, creating their account on first login.
+ * - `email`: The email address from the Auth0 profile (required).
+ * - `username`: The preferred username for a new account (required).
+ */
+export interface Auth0LoginRequest extends Request {
+  body: {
+    email: string;
     username: string;
   };
 }

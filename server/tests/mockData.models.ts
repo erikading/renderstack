@@ -227,6 +227,7 @@ export const POPULATED_QUESTIONS: PopulatedDatabaseQuestion[] = [
 
 export const user: User = {
   username: 'user1',
+  email: 'user1@example.com',
   password: 'password',
   dateJoined: new Date('2024-12-03'),
 };
@@ -234,5 +235,6 @@ export const user: User = {
 export const safeUser: SafeDatabaseUser = {
   _id: new ObjectId(),
   username: 'user1',
+  email: 'user1@example.com',
   dateJoined: new Date('2024-12-03'),
 };

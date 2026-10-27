@@ -2,8 +2,9 @@ import MediaModel from '../../models/media.model';
 import mediaService from '../../services/media.service';
 import { Media, DatabaseMedia } from '../../types/types';
 import mongoose from 'mongoose';
-import fs from 'fs';
-jest.mock('fs');
+import { deleteObject } from '../../utils/storage.util';
+
+jest.mock('../../utils/storage.util');
 
 describe('Media Service', () => {
   beforeEach(() => {
@@ -15,7 +16,7 @@ describe('Media Service', () => {
     filepathLocation: '/test/hogwarts-example.png',
     filepathLocationClient: '../test/hogwarts-example.png',
     user: 'media1_uploader',
-    // fileBuffer: 'dummy_file_buffer',
+    fileSize: '1.5 MB',
   };
 
   const mockMedia: DatabaseMedia = {
@@ -36,10 +37,6 @@ describe('Media Service', () => {
         fileSize: '1.5 MB',
       };
 
-      (fs.statSync as jest.Mock).mockReturnValueOnce({
-        size: 1572864, // 1.5 MB in bytes
-      });
-
       // Mock the save() method on the MediaModel instance
       const saveMock = jest.fn().mockResolvedValueOnce(savedMedia);
       jest.spyOn(MediaModel.prototype, 'save').mockImplementation(saveMock);
@@ -53,20 +50,12 @@ describe('Media Service', () => {
     test('should return error when save returns null', async () => {
       jest.spyOn(MediaModel.prototype, 'save').mockResolvedValueOnce(null);
 
-      (fs.statSync as jest.Mock).mockReturnValueOnce({
-        size: 1572864, // 1.5 MB in bytes
-      });
-
       const result = await mediaService.addMedia(mockMediaInput);
 
       expect(result).toEqual({ error: 'Failed to add media' });
     });
 
     test('addMedia should return an object with error if create throws an error', async () => {
-      (fs.statSync as jest.Mock).mockReturnValueOnce({
-        size: 1572864, // 1.5 MB in bytes
-      });
-
       jest.spyOn(MediaModel.prototype, 'save').mockRejectedValue(new Error('Error from db query'));
       const result = await mediaService.addMedia(mockMediaInput);
       expect(result).toEqual({ error: 'Error from db query' });
@@ -126,6 +115,16 @@ describe('Media Service', () => {
       expect(MediaModel.findOneAndDelete).toHaveBeenCalledWith({
         filepathLocation: 'dummy/filepath',
       });
+      expect(deleteObject).toHaveBeenCalledWith('dummy/filepath');
+    });
+
+    test('should return error when storage deletion fails', async () => {
+      jest.spyOn(MediaModel, 'findOneAndDelete').mockResolvedValueOnce(mockMedia);
+      (deleteObject as jest.Mock).mockRejectedValueOnce(new Error('Storage error'));
+
+      const result = await mediaService.deleteMedia(encodeURIComponent(mockMedia.filepathLocation));
+
+      expect(result).toEqual({ error: 'Storage error' });
     });
 
     test('should return error when media not found', async () => {

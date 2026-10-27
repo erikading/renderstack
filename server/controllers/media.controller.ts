@@ -3,35 +3,15 @@ import multer from 'multer';
 import mediaService from '../services/media.service';
 import { Media, FakeSOSocket } from '../types/types';
 import path from 'path';
-import fs from 'fs';
+import { getPublicUrl, uploadObject } from '../utils/storage.util';
 
-const STORAGE_PATH = 'public/userData';
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB, matches the client-side limit
 
+// Files are held in memory and then sent to the R2 bucket
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      const user = req.body.user; // Should be available now
-      // console.log('User:', req.body.user);
-
-      if (!user) {
-        // console.error('User not found in req.body');
-        return cb(new Error('User is required'), '');
-      }
-
-      const userDir = `${STORAGE_PATH}/${user}`;
-
-      if (!fs.existsSync(userDir)) {
-        fs.mkdirSync(userDir, { recursive: true });
-      }
-
-      cb(null, userDir);
-    },
-    filename: function (req, file, cb) {
-      const ext = path.extname(file.originalname);
-      cb(null, `${Date.now()}${ext}`);
-    },
-  }),
-}); // memory storage
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+});
 
 const mediaController = (socket: FakeSOSocket) => {
   const router = express.Router();
@@ -53,18 +33,19 @@ const mediaController = (socket: FakeSOSocket) => {
         return res.status(400).json({ error: 'User missing' });
         // } else if (!filepathLocation) {
         //   return res.status(400).json({ error: 'Filepath missing' });
-      } else if (!req.file?.path) {
-        return res.status(400).json({ error: 'Path missing' });
       }
 
-      const replacedPath = req.file.path.replaceAll('\\', '/');
-      // console.log('req.file.path replaced:', replacedPath);
+      // Usernames become part of the object key, so strip anything that isn't path-safe
+      const safeUser = String(user).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const key = `userData/${safeUser}/${Date.now()}${path.extname(file.originalname)}`;
+
+      await uploadObject(key, file.buffer, file.mimetype);
 
       const media: Media = {
-        filepathLocation: replacedPath,
-        filepathLocationClient: `${process.env.SERVER_URL}/userData/${user}/${file.filename}`,
-        // fileBuffer: file.buffer,
+        filepathLocation: key,
+        filepathLocationClient: getPublicUrl(key),
         user,
+        fileSize: mediaService.formatFileSize(file.size),
       };
 
       // console.log('saved for client filepath:', media.filepathLocationClient);

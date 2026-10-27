@@ -6,6 +6,7 @@ import { SafeDatabaseUser, User } from '../../types/types';
 
 const mockUser: User = {
   username: 'user1',
+  email: 'user1@example.com',
   password: 'password',
   dateJoined: new Date('2024-12-03'),
 };
@@ -13,12 +14,14 @@ const mockUser: User = {
 const mockSafeUser: SafeDatabaseUser = {
   _id: new mongoose.Types.ObjectId(),
   username: 'user1',
+  email: 'user1@example.com',
   dateJoined: new Date('2024-12-03'),
 };
 
 const mockUserJSONResponse = {
   _id: mockSafeUser._id.toString(),
   username: 'user1',
+  email: 'user1@example.com',
   dateJoined: new Date('2024-12-03').toISOString(),
 };
 
@@ -28,13 +31,58 @@ const updatedUserSpy = jest.spyOn(util, 'updateUser');
 const getUserByUsernameSpy = jest.spyOn(util, 'getUserByUsername');
 const getUsersListSpy = jest.spyOn(util, 'getUsersList');
 const deleteUserByUsernameSpy = jest.spyOn(util, 'deleteUserByUsername');
+const findOrCreateAuth0UserSpy = jest.spyOn(util, 'findOrCreateAuth0User');
 
 describe('Test userController', () => {
+  describe('POST /auth0Login', () => {
+    it('should return the user for a valid email and username', async () => {
+      findOrCreateAuth0UserSpy.mockResolvedValueOnce(mockSafeUser);
+
+      const response = await supertest(app)
+        .post('/api/user/auth0Login')
+        .send({ email: 'aaa@gmail.com', username: 'aaa' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockUserJSONResponse);
+      expect(findOrCreateAuth0UserSpy).toHaveBeenCalledWith('aaa@gmail.com', 'aaa');
+    });
+
+    it('should return 400 for a missing or invalid email', async () => {
+      const response = await supertest(app)
+        .post('/api/user/auth0Login')
+        .send({ email: 'not-an-email', username: 'aaa' });
+
+      expect(response.status).toBe(400);
+      expect(findOrCreateAuth0UserSpy).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for a missing username', async () => {
+      const response = await supertest(app)
+        .post('/api/user/auth0Login')
+        .send({ email: 'aaa@gmail.com' });
+
+      expect(response.status).toBe(400);
+      expect(findOrCreateAuth0UserSpy).not.toHaveBeenCalled();
+    });
+
+    it('should return 500 if the service returns an error', async () => {
+      findOrCreateAuth0UserSpy.mockResolvedValueOnce({ error: 'Database error' });
+
+      const response = await supertest(app)
+        .post('/api/user/auth0Login')
+        .send({ email: 'aaa@gmail.com', username: 'aaa' });
+
+      expect(response.status).toBe(500);
+      expect(response.text).toContain('Database error');
+    });
+  });
+
   describe('POST /signup', () => {
     it('should create a new user given correct arguments', async () => {
       const mockReqBody = {
         username: mockUser.username,
         password: mockUser.password,
+        email: mockUser.email,
         biography: 'This is a test biography',
       };
 
@@ -68,6 +116,7 @@ describe('Test userController', () => {
       const mockReqBody = {
         username: '',
         password: mockUser.password,
+        email: mockUser.email,
       };
 
       const response = await supertest(app).post('/api/user/signup').send(mockReqBody);
@@ -76,6 +125,17 @@ describe('Test userController', () => {
 
       expect(response.status).toBe(400);
       expect(openApiError.errors[0].path).toBe('/body/username');
+    });
+
+    it('should return 400 for request missing email', async () => {
+      const mockReqBody = {
+        username: mockUser.username,
+        password: mockUser.password,
+      };
+
+      const response = await supertest(app).post('/api/user/signup').send(mockReqBody);
+
+      expect(response.status).toBe(400);
     });
 
     it('should return 400 for request missing password', async () => {
@@ -95,6 +155,7 @@ describe('Test userController', () => {
       const mockReqBody = {
         username: mockUser.username,
         password: '',
+        email: mockUser.email,
       };
 
       const response = await supertest(app).post('/api/user/signup').send(mockReqBody);
@@ -109,6 +170,7 @@ describe('Test userController', () => {
       const mockReqBody = {
         username: mockUser.username,
         password: mockUser.password,
+        email: mockUser.email,
       };
 
       saveUserSpy.mockResolvedValueOnce({ error: 'Error saving user' });

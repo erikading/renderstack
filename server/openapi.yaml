@@ -1533,6 +1533,7 @@ components:
       required:
         - username
         - password
+        - email
       properties:
         username:
           type: string
@@ -1544,7 +1545,7 @@ components:
           type: string
           format: email
           nullable: true
-          description: Optional user email.
+          description: The user's email address.
         biography:
           type: string
           default: ''

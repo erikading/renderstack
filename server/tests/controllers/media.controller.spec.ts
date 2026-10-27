@@ -3,9 +3,10 @@ import mongoose from 'mongoose';
 import { app } from '../../app';
 import mediaService from '../../services/media.service';
 import { DatabaseMedia } from '../../types/types';
-import fs from 'fs';
+import * as storage from '../../utils/storage.util';
 
 jest.mock('fs');
+jest.mock('../../utils/storage.util');
 jest.mock('yaml', () => ({
   parse: jest.fn(() => ({ openapi: '3.0.0', info: { title: 'Mock API', version: '1.0.0' } })),
 }));
@@ -30,16 +31,13 @@ jest.mock('multer', () => {
         originalname: 'dummy.txt',
         encoding: '7bit',
         mimetype: 'text/plain',
-        destination: 'public/userData/media1_uploader',
-        filename: '1234567890.txt',
-        path: 'public\\userData\\media1_uploader\\1234567890.txt', // multer is currently written for window styled paths
+        buffer: Buffer.from('dummy file content'),
         size: 13000,
       };
       next();
     }),
   });
 
-  mockMulter.diskStorage = jest.fn();
   mockMulter.memoryStorage = jest.fn();
 
   return mockMulter;
@@ -62,21 +60,17 @@ describe('POST /create', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock all fs operations
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
-    (fs.statSync as jest.Mock).mockReturnValue({
-      size: 13000,
-      isFile: () => true,
-      isDirectory: () => false,
-    });
+    (storage.uploadObject as jest.Mock).mockResolvedValue(undefined);
+    (storage.getPublicUrl as jest.Mock).mockImplementation(
+      (key: string) => `https://media.example.com/${key}`,
+    );
   });
 
   test('should create a new media successfully', async () => {
     const createdMedia = {
       _id: new mongoose.Types.ObjectId(),
-      filepathLocation: 'public/userData/media1_uploader/1234567890.txt',
-      filepathLocationClient: `${process.env.SERVER_URL}/userData/media1_uploader/1234567890.txt`,
+      filepathLocation: 'userData/media1_uploader/1234567890.txt',
+      filepathLocationClient: 'https://media.example.com/userData/media1_uploader/1234567890.txt',
       user: 'media1_uploader',
       fileSize: '12.7 KB',
     };
@@ -91,13 +85,31 @@ describe('POST /create', () => {
     expect(response.status).toBe(200);
     // expect(response.body).toEqual(createdMedia);
 
+    expect(storage.uploadObject).toHaveBeenCalledWith(
+      expect.stringMatching(/^userData\/media1_uploader\/\d+\.txt$/),
+      expect.any(Buffer),
+      'text/plain',
+    );
     expect(addMediaSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         user: 'media1_uploader',
-        filepathLocation: expect.stringContaining('.txt'),
-        filepathLocationClient: expect.stringContaining('media1_uploader'),
+        filepathLocation: expect.stringMatching(/^userData\/media1_uploader\/\d+\.txt$/),
+        filepathLocationClient: expect.stringContaining('https://media.example.com/userData/'),
       }),
     );
+  });
+
+  test('should return 500 when the storage upload fails', async () => {
+    (storage.uploadObject as jest.Mock).mockRejectedValueOnce(new Error('Upload failed'));
+
+    const response = await supertest(app)
+      .post('/api/media/create')
+      .field('user', 'media1_uploader')
+      .attach('file', Buffer.from('dummy file content'), 'dummy.txt');
+
+    expect(response.status).toBe(500);
+    expect(response.text).toContain('Upload failed');
+    expect(addMediaSpy).not.toHaveBeenCalled();
   });
 
   test('should return 500 when service returns error', async () => {

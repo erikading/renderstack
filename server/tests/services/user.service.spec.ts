@@ -2,6 +2,7 @@ import mongoose, { Query } from 'mongoose';
 import UserModel from '../../models/users.model';
 import {
   deleteUserByUsername,
+  findOrCreateAuth0User,
   getUserByUsername,
   getUsersList,
   loginUser,
@@ -260,6 +261,7 @@ describe('updateUser', () => {
   const safeUpdatedUser: SafeDatabaseUser = {
     _id: new mongoose.Types.ObjectId(),
     username: user.username,
+    email: user.email,
     dateJoined: user.dateJoined,
   };
 
@@ -346,5 +348,58 @@ describe('updateUser', () => {
     const updatedError = await updateUser(user.username, biographyUpdates);
 
     expect('error' in updatedError).toBe(true);
+  });
+});
+
+describe('findOrCreateAuth0User', () => {
+  const selectable = (value: unknown) =>
+    ({ select: jest.fn().mockResolvedValue(value) }) as unknown as Query<any, any>;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('should return the existing user matched by email', async () => {
+    jest.spyOn(UserModel, 'findOne').mockReturnValueOnce(selectable(safeUser));
+    const createSpy = jest.spyOn(UserModel, 'create');
+
+    const result = await findOrCreateAuth0User('AAA@Gmail.com ', 'aaa');
+
+    expect(UserModel.findOne).toHaveBeenCalledWith({ email: 'aaa@gmail.com' });
+    expect(result).toEqual(safeUser);
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('should create a new user, suffixing the username if it is taken', async () => {
+    jest
+      .spyOn(UserModel, 'findOne')
+      .mockReturnValueOnce(selectable(null))
+      .mockReturnValueOnce(selectable(safeUser));
+    jest
+      .spyOn(UserModel, 'exists')
+      .mockResolvedValueOnce({ _id: new mongoose.Types.ObjectId() } as any)
+      .mockResolvedValueOnce(null);
+    const createSpy = jest.spyOn(UserModel, 'create').mockResolvedValueOnce({} as any);
+
+    const result = await findOrCreateAuth0User('aaa@gmail.com', 'a a');
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: expect.stringMatching(/^a_a\d{4}$/),
+        email: 'aaa@gmail.com',
+        password: expect.any(String),
+      }),
+    );
+    expect(result).toEqual(safeUser);
+  });
+
+  it('should return an error if the database fails', async () => {
+    jest.spyOn(UserModel, 'findOne').mockImplementationOnce(() => {
+      throw new Error('Database error');
+    });
+
+    const result = await findOrCreateAuth0User('aaa@gmail.com', 'aaa');
+
+    expect('error' in result).toBe(true);
   });
 });

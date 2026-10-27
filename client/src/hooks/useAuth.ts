@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useLoginContext from './useLoginContext';
-import { getUserByUsername } from '../services/userService';
+import { loginWithAuth0 } from '../services/userService';
 import { useAuth0 } from '@auth0/auth0-react';
 import { SafeDatabaseUser } from '@fake-stack-overflow/shared';
 
@@ -27,6 +27,7 @@ const useAuth = () => {
   // const [passwordConfirmation, setPasswordConfirmation] = useState<string>('');
   // const [showPassword, setShowPassword] = useState(false);
   const [err, setErr] = useState<string>('');
+  const signInStarted = useRef(false); // the effect runs every render; only sign in once
   const { setUser } = useLoginContext();
   const navigate = useNavigate();
 
@@ -87,16 +88,24 @@ const useAuth = () => {
   // };
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && auth0User) {
+    if (!isLoading && isAuthenticated && auth0User && !signInStarted.current) {
+      signInStarted.current = true;
       (async () => {
         try {
           // const token = await getAccessTokenSilently();
-          const extractedUsername = (auth0User.name || auth0User.nickname)?.trim();
-          if (!extractedUsername) {
+          const email = auth0User.email?.trim();
+          if (!email) {
+            setErr('Your Auth0 account has no email address');
             return;
           }
 
-          const user = await getUserByUsername(extractedUsername);
+          // Database-connection users have their email as `name`, so prefer the nickname then
+          const displayName = auth0User.name?.trim();
+          const username =
+            (displayName && !displayName.includes('@') ? displayName : auth0User.nickname?.trim()) ||
+            email.split('@')[0];
+
+          const user = await loginWithAuth0(email, username);
           // console.log('Fetched user: ', user);
 
           handleRedirectHome(user);

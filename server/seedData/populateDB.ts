@@ -78,7 +78,7 @@ async function main(args: string[]) {
     throw new Error('ERROR: You need to specify a valid MongoDB URL as the first argument');
   }
 
-  await mongoose.connect(`${mongoURL}/fake_so`);
+  await mongoose.connect(`${mongoURL}/${process.env.MONGODB_DB || 'fake_so'}`);
 
   console.log('Connected to MongoDB');
 

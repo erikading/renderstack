@@ -23,12 +23,9 @@ const ProfileSettings: React.FC = () => {
     newBio,
     customFont,
     handleUpdateCustomFont,
-    newPassword,
-    confirmNewPassword,
     showConfirmation,
     pendingAction,
     canEditProfile,
-    showPassword,
     editSkillsMode,
     selectedSkills,
     toggleSkill,
@@ -57,13 +54,10 @@ const ProfileSettings: React.FC = () => {
     handleUploadProfilePicture,
     handleUploadBannerImage,
     handleUploadResume,
-    togglePasswordVisibility,
     setEditBioMode,
     setNewBio,
-    setNewPassword,
-    setConfirmNewPassword,
     setShowConfirmation,
-    handleResetPassword,
+    handleSendPasswordReset,
     handleUpdateBiography,
     handleDeleteUser,
     handleViewCollectionsPage,
@@ -1007,28 +1001,10 @@ const ProfileSettings: React.FC = () => {
             {canEditProfile && (
               <>
                 <h4>Reset Password</h4>
-                <input
-                  className='input-text'
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder='New Password'
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                />
-                <input
-                  className='input-text'
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder='Confirm New Password'
-                  value={confirmNewPassword}
-                  onChange={e => setConfirmNewPassword(e.target.value)}
-                />
-                <div className='password-actions'>
-                  <button className='button button-secondary' onClick={togglePasswordVisibility}>
-                    {showPassword ? 'Hide Passwords' : 'Show Passwords'}
-                  </button>
-                  <button className='button button-primary' onClick={handleResetPassword}>
-                    Reset
-                  </button>
-                </div>
+                <p>We'll email {userData.email} a link to choose a new password.</p>
+                <button className='button button-primary' onClick={handleSendPasswordReset}>
+                  Send Reset Email
+                </button>
               </>
             )}
 

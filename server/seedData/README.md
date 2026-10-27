@@ -98,7 +98,7 @@ Ensure you have the MongoDB connection URI set in your environment:
 MONGODB_URI=mongodb://localhost:27017
 ```
 
-The system will populate a database named `fake_so` using this connection.
+The system will populate a database named `fake_so` using this connection. Set `MONGODB_DB` to use a different database name.
 
 ### Running the Scripts
 

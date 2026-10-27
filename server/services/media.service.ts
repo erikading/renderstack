@@ -1,6 +1,6 @@
 import MediaModel from '../models/media.model';
 import { Media, MediaResponse } from '../types/types';
-import fs from 'fs';
+import { deleteObject } from '../utils/storage.util';
 
 /**
  * Converts bytes to a human-readable string
@@ -16,38 +16,17 @@ const formatFileSize = (bytes: number): string => {
 };
 
 /**
- * Creates a media document (and copies the media file from user's device to the application)
+ * Creates a media document for a file that has already been uploaded to storage
  * @param media - the media object to be created
  **/
 const addMedia = async (media: Media): Promise<MediaResponse> => {
   try {
-    // const userDir = path.resolve(__dirname, '../../client/public/userData', media.user);
-
-    // // Make sure the directory exists
-    // if (!fs.existsSync(userDir)) {
-    //   fs.mkdirSync(userDir, { recursive: true });
-    // }
-
-    // Extract the filename
-    // const filename = path.basename(media.filepathLocation);
-
-    // Save the file inside that directory
-    // const destPath = path.join(userDir, filename);
-    // fs.writeFileSync(destPath, media.fileBuffer);
-
-    const fileStats = fs.statSync(media.filepathLocation);
-    // Get file size in human-readable format
-    const fileSize = formatFileSize(fileStats.size);
-
-    // console.log('service fileStats:', fileStats);
-    // console.log('service fileSize:', fileSize);
-
-    // Only store metadata + path in MongoDB
+    // Only store metadata + storage key/URL in MongoDB
     const mediaToSave = {
       filepathLocationClient: media.filepathLocationClient,
       filepathLocation: media.filepathLocation,
       user: media.user,
-      fileSize,
+      fileSize: media.fileSize,
     };
 
     const mediaDoc = new MediaModel(mediaToSave);
@@ -64,8 +43,8 @@ const addMedia = async (media: Media): Promise<MediaResponse> => {
 };
 
 /**
- * Deletes a media document
- * @param filepathLocation of the media
+ * Deletes a media document and its file in storage
+ * @param filepathLocation of the media (the storage key)
  * @returns the deleted media document
  */
 const deleteMedia = async (filepathLocation: string): Promise<MediaResponse> => {
@@ -79,6 +58,8 @@ const deleteMedia = async (filepathLocation: string): Promise<MediaResponse> => 
     if (!deleted) {
       return { error: 'Media not found' };
     }
+
+    await deleteObject(deleted.filepathLocation);
 
     return deleted; // or return { success: true }
   } catch (error) {

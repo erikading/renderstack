@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   getUserByUsername,
   deleteUser,
-  resetPassword,
+  sendPasswordResetEmail,
   updateBiography,
   updateSkills,
   updateExternalLinks,
@@ -31,8 +31,6 @@ const useProfileSettings = () => {
 
   // Local state
   const [userData, setUserData] = useState<SafeDatabaseUser | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [editBioMode, setEditBioMode] = useState(false);
   const [newBio, setNewBio] = useState('');
@@ -56,7 +54,6 @@ const useProfileSettings = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  const [showPassword, setShowPassword] = useState(false);
 
   const canEditProfile =
     currentUser.username && userData?.username ? currentUser.username === userData.username : false;
@@ -89,34 +86,13 @@ const useProfileSettings = () => {
     fetchUserData();
   }, [username]);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(prevState => !prevState);
-  };
-
-  const validatePasswords = () => {
-    if (newPassword.trim() === '' || confirmNewPassword.trim() === '') {
-      toast.error('Please enter and confirm your new password.');
-      return false;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast.error('Passwords do not match.');
-      return false;
-    }
-    return true;
-  };
-
-  const handleResetPassword = async () => {
-    if (!username) return;
-    if (!validatePasswords()) {
-      return;
-    }
+  const handleSendPasswordReset = async () => {
+    if (!userData?.email) return;
     try {
-      await resetPassword(username, newPassword);
-      toast.success('Password reset successful!');
-      setNewPassword('');
-      setConfirmNewPassword('');
+      await sendPasswordResetEmail(userData.email);
+      toast.success('Password reset email sent. Check your inbox.');
     } catch (error) {
-      toast.error('Failed to reset password.');
+      toast.error('Failed to send password reset email.');
     }
   };
 
@@ -438,10 +414,6 @@ const useProfileSettings = () => {
   return {
     userData,
     setUserData,
-    newPassword,
-    confirmNewPassword,
-    setNewPassword,
-    setConfirmNewPassword,
     loading,
     editBioMode,
     setEditBioMode,
@@ -498,9 +470,7 @@ const useProfileSettings = () => {
     pendingAction,
     setPendingAction,
     canEditProfile,
-    showPassword,
-    togglePasswordVisibility,
-    handleResetPassword,
+    handleSendPasswordReset,
     handleUpdateBiography,
     handleDeleteUser,
     handleViewCollectionsPage,

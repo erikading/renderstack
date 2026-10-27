@@ -2,7 +2,17 @@
 
 RenderStack brings modern media embedding to FakeStackOverflow, most notably through a native 3D model viewport that lets users upload, view, and interact with 3D assets directly in the browser. It also introduces a community-driven gallery for showcasing work, along with expanded profile customization that allows users to build dynamic, portfolio-style pages. Together, these features elevate the platform from a traditional Q&A site into a collaborative hub for creative problem-solving, inspiration, and professional expression in software development, graphics, and 3D art.
 
-View RenderStack here: https://cs4530-f25-201.onrender.com/home
+View the original class project here: https://cs4530-f25-201.onrender.com/home
+
+This fork is deployed separately; its link will be added here once the new Render services are live.
+
+## Configuration
+
+Copy `server/.env.example` and `client/.env.example` to `.env` files (or set the same variables in the Render dashboard). Uploaded media (images, videos, GLB files) is stored in a Cloudflare R2 bucket rather than on the server's disk, so it persists across redeploys:
+
+1. Create an R2 bucket and enable public access (the `r2.dev` URL or a custom domain).
+2. Add a CORS rule on the bucket allowing `GET` from your frontend's origin, so the 3D viewer can load `.glb` files.
+3. Create an R2 API token with Object Read & Write access and fill in the `R2_*` variables.
 
 ## Feature Overview
 

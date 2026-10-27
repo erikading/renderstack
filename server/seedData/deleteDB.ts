@@ -10,7 +10,7 @@ if (!MONGO_URL) {
   throw new Error('MONGODB_URI not set in environment variables');
 }
 
-mongoose.connect(`${MONGO_URL}/fake_so`);
+mongoose.connect(`${MONGO_URL}/${process.env.MONGODB_DB || 'fake_so'}`);
 
 const db = mongoose.connection;
 

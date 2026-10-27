@@ -31,6 +31,22 @@ const getUserByUsername = async (username: string): Promise<SafeDatabaseUser> =>
 };
 
 /**
+ * Signs in an Auth0 user, creating their account on first login.
+ *
+ * @param email - The email address from the Auth0 profile.
+ * @param username - The preferred username for a new account.
+ * @returns {Promise<SafeDatabaseUser>} The existing or newly created user.
+ * @throws {Error} If the request fails.
+ */
+const loginWithAuth0 = async (email: string, username: string): Promise<SafeDatabaseUser> => {
+  const res = await api.post(`${USER_API_URL}/auth0Login`, { email, username });
+  if (res.status !== 200) {
+    throw new Error('Error when signing in with Auth0');
+  }
+  return res.data;
+};
+
+/**
  * Sends a POST request to create a new user account.
  *
  * @param user - The user credentials (username and password) for signup.
@@ -85,21 +101,23 @@ const deleteUser = async (username: string): Promise<SafeDatabaseUser> => {
 };
 
 /**
- * Resets the password for a user.
- * @param username - The unique username of the user
- * @param newPassword - The new password to be set for the user
- * @returns A promise that resolves to the updated user data
- * @throws {Error} If the request to the server is unsuccessful
+ * Asks Auth0 to email the user a link for choosing a new password.
+ * @param email - The email address of the account
+ * @throws {Error} If the request to Auth0 is unsuccessful
  */
-const resetPassword = async (username: string, newPassword: string): Promise<SafeDatabaseUser> => {
-  const res = await api.patch(`${USER_API_URL}/resetPassword`, {
-    username,
-    password: newPassword,
+const sendPasswordResetEmail = async (email: string): Promise<void> => {
+  const res = await fetch(`https://${import.meta.env.VITE_AUTH0_DOMAIN}/dbconnections/change_password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: import.meta.env.VITE_AUTH0_CLIENT_ID,
+      email,
+      connection: import.meta.env.VITE_AUTH0_CONNECTION || 'Username-Password-Authentication',
+    }),
   });
-  if (res.status !== 200) {
-    throw new Error('Error when resetting password');
+  if (!res.ok) {
+    throw new Error('Error when requesting password reset');
   }
-  return res.data;
 };
 
 /**
@@ -384,10 +402,11 @@ export const togglePortfolioLike = async (
 export {
   getUsers,
   getUserByUsername,
+  loginWithAuth0,
   loginUser,
   createUser,
   deleteUser,
-  resetPassword,
+  sendPasswordResetEmail,
   updateBiography,
   updateSkills,
   updateExternalLinks,

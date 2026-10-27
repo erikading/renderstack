@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import UserModel from '../models/users.model';
 import {
   DatabaseUser,
@@ -26,6 +27,7 @@ export const saveUser = async (user: User): Promise<UserResponse> => {
     const safeUser: SafeDatabaseUser = {
       _id: result._id,
       username: result.username,
+      email: result.email,
       dateJoined: result.dateJoined,
       biography: result.biography,
     };
@@ -53,6 +55,63 @@ export const getUserByUsername = async (username: string): Promise<UserResponse>
     return user;
   } catch (error) {
     return { error: `Error occurred when finding user: ${error}` };
+  }
+};
+
+/**
+ * Finds the account for an Auth0 login, creating it on first login.
+ *
+ * Accounts are matched by email. If there is none, a new account is created, adding a numeric
+ * suffix to the username if it is already taken.
+ *
+ * @param {string} email - The email address from the Auth0 profile.
+ * @param {string} username - The preferred username for a new account.
+ * @returns {Promise<UserResponse>} - Resolves with the user object (without the password) or an error message.
+ */
+export const findOrCreateAuth0User = async (
+  email: string,
+  username: string,
+): Promise<UserResponse> => {
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const baseUsername = username.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'user';
+
+    const existing = await UserModel.findOne({ email: normalizedEmail }).select('-password');
+    if (existing) {
+      return existing;
+    }
+
+    let candidate = baseUsername;
+    while (await UserModel.exists({ username: candidate })) {
+      candidate = `${baseUsername}${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    try {
+      await UserModel.create({
+        username: candidate,
+        email: normalizedEmail,
+        // Auth0 handles authentication, so this password is never used to sign in
+        password: randomBytes(32).toString('hex'),
+        dateJoined: new Date(),
+        biography: '',
+      });
+    } catch (error) {
+      // A parallel login for the same email may have created the account first
+      const created = await UserModel.findOne({ email: normalizedEmail }).select('-password');
+      if (created) {
+        return created;
+      }
+      throw error;
+    }
+
+    const user = await UserModel.findOne({ email: normalizedEmail }).select('-password');
+    if (!user) {
+      throw Error('Failed to create user');
+    }
+
+    return user;
+  } catch (error) {
+    return { error: `Error occurred when signing in Auth0 user: ${error}` };
   }
 };
 

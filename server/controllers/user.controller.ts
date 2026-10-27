@@ -1,6 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import multer from 'multer';
 import {
+  Auth0LoginRequest,
   UserRequest,
   User,
   UserCredentials,
@@ -11,6 +12,7 @@ import {
 } from '../types/types';
 import {
   deleteUserByUsername,
+  findOrCreateAuth0User,
   getUserByUsername,
   getUsersList,
   loginUser,
@@ -98,6 +100,37 @@ const userController = (socket: FakeSOSocket) => {
       res.status(200).json(user);
     } catch (error) {
       res.status(500).send(`Error when getting user by username: ${error}`);
+    }
+  };
+
+  /**
+   * Signs in an Auth0 user, creating their account on first login.
+   * @param req The request containing the Auth0 profile's email and a preferred username in the body.
+   * @param res The response, either returning the user or an error.
+   * @returns A promise resolving to void.
+   */
+  const auth0Login = async (req: Auth0LoginRequest, res: Response): Promise<void> => {
+    const { email, username } = req.body;
+
+    if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).send('A valid email is required');
+      return;
+    }
+    if (typeof username !== 'string' || !username.trim()) {
+      res.status(400).send('Username is required');
+      return;
+    }
+
+    try {
+      const user = await findOrCreateAuth0User(email, username);
+
+      if ('error' in user) {
+        throw Error(user.error);
+      }
+
+      res.status(200).json(user);
+    } catch (error) {
+      res.status(500).send(`Error when signing in Auth0 user: ${error}`);
     }
   };
 
@@ -875,6 +908,7 @@ const userController = (socket: FakeSOSocket) => {
   // Define routes for the user-related operations.
   router.post('/signup', createUser);
   router.post('/login', userLogin);
+  router.post('/auth0Login', auth0Login);
   router.patch('/resetPassword', resetPassword);
   router.get('/getUser/:username', getUser);
   router.get('/getUsers', getUsers);

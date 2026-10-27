@@ -7,6 +7,7 @@ import { SafeDatabaseUser } from '../../types/types';
 const mockSafeUser: SafeDatabaseUser = {
   _id: new mongoose.Types.ObjectId(),
   username: 'testuser',
+  email: 'testuser@example.com',
   dateJoined: new Date('2024-12-03'),
   biography: 'Original bio',
   skills: ['React', 'JavaScript'],
@@ -25,6 +26,7 @@ const mockSafeUser: SafeDatabaseUser = {
 const mockUserWithPortfolio: SafeDatabaseUser = {
   _id: new mongoose.Types.ObjectId(),
   username: 'user123',
+  email: 'user123@example.com',
   dateJoined: new Date(),
   biography: '',
   skills: [],
@@ -47,6 +49,7 @@ const mockUserWithPortfolio: SafeDatabaseUser = {
 const mockUserWithTestimonial: SafeDatabaseUser = {
   _id: new mongoose.Types.ObjectId(),
   username: 'user123',
+  email: 'user123@example.com',
   dateJoined: new Date(),
   biography: '',
   skills: [],
@@ -619,6 +622,7 @@ describe('Profile Features - Testimonials', () => {
       const profileUser = {
         ...mockSafeUser,
         username: 'user123',
+  email: 'user123@example.com',
         testimonials: [],
       };
 
@@ -718,6 +722,7 @@ describe('Profile Features - Testimonials', () => {
       const profileUser = {
         ...mockSafeUser,
         username: 'user123',
+  email: 'user123@example.com',
         testimonials: [existingTestimonial],
       };
 
@@ -751,6 +756,7 @@ describe('Profile Features - Testimonials', () => {
       const testimonialId = new mongoose.Types.ObjectId();
       const mockReqBody = {
         username: 'user123',
+  email: 'user123@example.com',
         testimonialId: testimonialId.toString(),
         approved: true,
       };
@@ -758,6 +764,7 @@ describe('Profile Features - Testimonials', () => {
       const userWithTestimonials = {
         ...mockSafeUser,
         username: 'user123',
+  email: 'user123@example.com',
         testimonials: [
           {
             _id: testimonialId,
@@ -796,6 +803,7 @@ describe('Profile Features - Testimonials', () => {
     it('should return 404 if testimonial not found', async () => {
       const mockReqBody = {
         username: 'user123',
+  email: 'user123@example.com',
         testimonialId: new mongoose.Types.ObjectId().toString(),
         approved: true,
       };
@@ -818,6 +826,7 @@ describe('Profile Features - Testimonials', () => {
 
       const response = await supertest(app).patch('/api/user/testimonial/approve').send({
         username: 'user123',
+  email: 'user123@example.com',
         testimonialId: mockUserWithTestimonial.testimonials![0]._id!.toString(),
         approved: true,
       });
@@ -891,6 +900,7 @@ describe('Profile Features - Testimonials', () => {
       const mockUser = {
         _id: new mongoose.Types.ObjectId(),
         username,
+        email: 'user_with_many_testimonials@example.com',
         dateJoined: new Date(),
         testimonials: [
           {
@@ -1071,6 +1081,7 @@ describe('Profile Features - Portfolio Management', () => {
 
       const response = await supertest(app).delete('/api/user/deleteSinglePortfolioItem').send({
         username: 'user123',
+  email: 'user123@example.com',
         index: 0,
       });
 
