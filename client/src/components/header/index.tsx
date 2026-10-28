@@ -37,7 +37,7 @@ const Header = () => {
     <header className='header'>
       <div className='header-left' onClick={() => navigate('/')}>
         <img
-          src='https://www.dropbox.com/scl/fi/gjzmbpuagf8iifclspyho/logo.png?rlkey=85gclc8jdmi481bm0tr2yupwy&e=2&st=1ejifznj&bmus=1&dl=1'
+          src='/logo.png'
           alt='Logo'
           className='header-logo'
         />
